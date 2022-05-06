@@ -1,7 +1,10 @@
 from calendar import c
+import errno
 from filecmp import cmp
 import os
+from re import A
 from turtle import end_fill
+from warnings import catch_warnings
 from numpy import append, sort
 import functools
 
@@ -204,7 +207,14 @@ def AND_LIST(p_list):
     a = len(p_list)
     for i in range(1,a):
         list1 = AND(list1,p_list[i].posting_list)
-    return list1
+    temp1 = list1
+    count = 0
+    while temp1 != None:
+        temp1 = temp1.next
+        count = count + 1
+    ans = Dictionary('0','count',0)
+    ans.posting_list = list1
+    return ans
 
 #OR(p1,p2,....pt)
 def OR_LIST(p_list):
@@ -212,10 +222,18 @@ def OR_LIST(p_list):
     a = len(p_list)
     for i in range(1,a):
         list1 = OR(list1,p_list[i].posting_list)
-    return list1
+    temp1 = list1
+    count = 0
+    while temp1 != None:
+        temp1 = temp1.next
+        count = count + 1
+    ans = Dictionary('0','count',0)
+    ans.posting_list = list1
+    return ans
 
 #显示
 def pri(b):
+    b = b.posting_list
     while b!= None:
         print(files_path[b.docID])
         b = b.next
@@ -275,15 +293,15 @@ def addx(x):
         ans=dictionary[x].posting_list
     return ans
 switch = {
-    "ADD_LIST":lambda ans, listO:addLIST(),
-    "AND_LIST":lambda ans, listO:AND_LIST(listO),
-    "OR_LIST":lambda ans, listO:OR_LIST(listO),
+    # "ADD_LIST":lambda ans, listO:addLIST(),
+    "AND_LIST":lambda listO:AND_LIST(listO),
+    "OR_LIST":lambda listO:OR_LIST(listO),
     "AND": lambda ans, listO: AND(ans,listO),#addx(input("请输入需要进行与操作的字词："))
     "OR": lambda ans, listO: OR(ans,listO),#addx(input("请输入需要进行或操作的字词："))
     "NOTAND": lambda ans, listO: NOTAND(ans,listO),#addx(input("请输入需要进行与非操作的字词："))
-    "AND_L": lambda ans, listO: AND(ans,listO),
-    "OR_L": lambda ans, listO: OR(ans,listO),
-    "NOTAND_L": lambda ans, listO: NOTAND(ans,listO),
+    # "AND_L": lambda ans, listO: AND(ans,listO),
+    # "OR_L": lambda ans, listO: OR(ans,listO),
+    # "NOTAND_L": lambda ans, listO: NOTAND(ans,listO),
     }
 '''
 s=""
@@ -308,16 +326,33 @@ while (True):
 
 '''
 
-s=""
 cxyj=input("请输入查询语句：")
 listI=cxyj.split(" ")
-ans=addx(listI[0])
+list_terms = []
+before = None
 for i in listI:
     if i in switch.keys():
-        s=i;
-    elif(s!=""):
-        ans=switch[s](ans,addx(i))
+        if before == None:
+            before = i
+        elif before != i:
+            ans = switch[before+'_LIST'](list_terms)
+            list_terms.clear()
+            list_terms.append(ans)
+            before = i
+    elif i in dictionary.keys():
+        list_terms.append(dictionary[i])
+    else: 
+        a = Dictionary(i,0,0)
+        a.posting_list = None
+        list_terms.append(a)
+if before is None:
+    ans = list_terms[0]
+else:
+    ans = switch[before+'_LIST'](list_terms)
 pri(ans)
+        
+
+
 
 
 
