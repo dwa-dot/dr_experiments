@@ -155,14 +155,18 @@ def AND(p1,p2):
 def NOTAND(p1 ,p2):
     list1 = Posting(0,0)
     ptr = list1
-    while(p1!=None and p2!=None):
-        if(p1.docID==p2.docID):
+    while(p1!=None):
+        if p2 is None:
+            ptr.next = Posting(p1.docID,1)
+            ptr = ptr.next
+            p1 = p1.next
+        elif(p1.docID==p2.docID):
             p1 = p1.next
             p2 = p2.next
 
-        else :
+        else:
             if (p1.docID<p2.docID):
-                list1.next = Posting(p1.docID,1)
+                ptr.next = Posting(p1.docID,1)
                 ptr = ptr.next
                 p1 = p1.next
             else:
@@ -343,7 +347,6 @@ for i in listI:
         elif before == 'NOTAND':
             ans = switch[before](list_terms[0].posting_list,list_terms[1].posting_list)
             list_terms.clear()
-            
             list_terms.append(ans)
             before = i
         elif before != i:
@@ -364,7 +367,10 @@ elif before == 'NOTAND':
     ans = switch[before](list_terms[0].posting_list,list_terms[1].posting_list)
 else:
     ans = switch[before+'_LIST'](list_terms)
-pri(ans)
+if ans == None:
+    print('None')
+else:
+    pri(ans)
         
 
 
