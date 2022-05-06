@@ -221,7 +221,7 @@ def AND_LIST(p_list):
     while temp1 != None:
         temp1 = temp1.next
         count = count + 1
-    ans = Dictionary('0','count',0)
+    ans = Dictionary('0',count,0)
     ans.posting_list = list1
     return ans
 
@@ -236,7 +236,7 @@ def OR_LIST(p_list):
     while temp1 != None:
         temp1 = temp1.next
         count = count + 1
-    ans = Dictionary('0','count',0)
+    ans = Dictionary('0',count,0)
     ans.posting_list = list1
     return ans
 
@@ -367,7 +367,7 @@ elif before == 'NOTAND':
     ans = switch[before](list_terms[0].posting_list,list_terms[1].posting_list)
 else:
     ans = switch[before+'_LIST'](list_terms)
-if ans == None:
+if ans.posting_list == None:
     print('None')
 else:
     pri(ans)
