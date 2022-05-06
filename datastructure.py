@@ -153,23 +153,28 @@ def AND(p1,p2):
 
 #与非运算
 def NOTAND(p1 ,p2):
-    ans = Posting(0,0)
-    ptr = ans
+    list1 = Posting(0,0)
+    ptr = list1
     while(p1!=None and p2!=None):
         if(p1.docID==p2.docID):
-            ptr.next = Posting(p1.docID,1)
-            ptr = ptr.next
             p1 = p1.next
             p2 = p2.next
 
         else :
             if (p1.docID<p2.docID):
-                ptr.next = Posting(p1.docID,1)
+                list1.next = Posting(p1.docID,1)
                 ptr = ptr.next
                 p1 = p1.next
             else:
                 p2 = p2.next
-    return ans.next
+    temp1 = list1.next
+    count = 0
+    while temp1 != None:
+        temp1 = temp1.next
+        count = count + 1
+    ans = Dictionary('0','count',0)
+    ans.posting_list = list1.next
+    return ans
 
 #或运算
 def OR(p1,p2):
@@ -236,6 +241,7 @@ def pri(b):
     b = b.posting_list
     while b!= None:
         print(files_path[b.docID])
+        # print(b.docID)
         b = b.next
 
 '''
@@ -334,11 +340,18 @@ for i in listI:
     if i in switch.keys():
         if before == None:
             before = i
+        elif before == 'NOTAND':
+            ans = switch[before](list_terms[0].posting_list,list_terms[1].posting_list)
+            list_terms.clear()
+            
+            list_terms.append(ans)
+            before = i
         elif before != i:
             ans = switch[before+'_LIST'](list_terms)
             list_terms.clear()
             list_terms.append(ans)
             before = i
+        
     elif i in dictionary.keys():
         list_terms.append(dictionary[i])
     else: 
@@ -347,6 +360,8 @@ for i in listI:
         list_terms.append(a)
 if before is None:
     ans = list_terms[0]
+elif before == 'NOTAND':
+    ans = switch[before](list_terms[0].posting_list,list_terms[1].posting_list)
 else:
     ans = switch[before+'_LIST'](list_terms)
 pri(ans)
