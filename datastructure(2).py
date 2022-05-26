@@ -12,6 +12,7 @@ import functools
 import math
 import os
 import jieba
+from pyparsing import Or
 from regex import P
 
 #查询语句显示
@@ -145,45 +146,30 @@ for i in range(0,n):
                 dictionary[character] = Dictionary(character,1,bigram_list[i][character])
                 posting = Posting(i,bigram_list[i][character])
                 dictionary[character].posting_list = posting
-# 生成权值
+# 生成正文权值
 for i in dictionary.keys():
     ptr = dictionary[i].posting_list
     while ptr!= None:
         ptr.weight = dictionary[i].idf * ptr.term_freq
+        # ptr.weight = 0.4
+        ptr = ptr.next
+
+# 生成标题权值
+for i in dictionary_title.keys():
+    ptr = dictionary_title[i].posting_list
+    while ptr!= None:
+        ptr.weight = 0.6
         ptr = ptr.next
 
 #与运算
 def AND(p1,p2):
-    ans = Posting(0, 0)
-    p3 = p1
-    p4 = p2
-    while (p3.next != None):
-        if (p3.docID > p3.next.docID):
-            n_docid = p3.docID
-            n_tef = p3.term_freq
-            p3.docID = p3.next.docID
-            p3.term_freq = p3.next.term_freq
-            p3.next.docID = n_docid
-            p3.next.term_freq = n_tef
-            p3 = p3.next
-        else:
-            p3 = p3.next
-    while (p4.next != None):
-        if (p4.docID > p4.next.docID):
-            n_docid = p4.docID
-            n_tef = p4.term_freq
-            p4.docID = p4.next.docID
-            p4.term_freq = p4.next.term_freq
-            p4.next.docID = n_docid
-            p4.next.term_freq = n_tef
-            p4 = p4.next
-        else:
-            p4 = p4.next
+    ans = Posting(0,0)
     ptr = ans
-    while (p1 != None and p2 != None):
-        if (p1.docID == p2.docID):
-            ptr.next = Posting(p1.docID, 1)
+    while(p1!=None and p2!=None):
+        if(p1.docID==p2.docID):
+            ptr.next = Posting(p1.docID,1)
             ptr = ptr.next
+            ptr.weight = p1.weight + p2.weight
             p1 = p1.next
             p2 = p2.next
 
@@ -196,49 +182,26 @@ def AND(p1,p2):
 
 #与非运算
 def NOTAND(p1 ,p2):
-    p3 = p1
-    p4 = p2
-    while (p3.next != None):
-        if (p3.docID > p3.next.docID):
-            n_docid = p3.docID
-            n_tef = p3.term_freq
-            p3.docID = p3.next.docID
-            p3.term_freq = p3.next.term_freq
-            p3.next.docID = n_docid
-            p3.next.term_freq = n_tef
-            p3 = p3.next
-        else:
-            p3 = p3.next
-    while (p4.next != None):
-        if (p4.docID > p4.next.docID):
-            n_docid = p4.docID
-            n_tef = p4.term_freq
-            p4.docID = p4.next.docID
-            p4.term_freq = p4.next.term_freq
-            p4.next.docID = n_docid
-            p4.next.term_freq = n_tef
-            p4 = p4.next
-        else:
-            p4 = p4.next
-    list1 = Posting(0, 0)
+    list1 = Posting(0,0)
     ptr = list1
-    while (p1 != None):
+    while(p1!=None):
         if p2 is None:
-            ptr.next = Posting(p1.docID, 1)
+            ptr.next = Posting(p1.docID,1)
             ptr = ptr.next
+            ptr.weight = p1.weight
             p1 = p1.next
-        elif (p1.docID == p2.docID):
+        elif(p1.docID==p2.docID):
             p1 = p1.next
             p2 = p2.next
 
         else:
-            if (p1.docID < p2.docID):
-                ptr.next = Posting(p1.docID, 1)
+            if (p1.docID<p2.docID):
+                ptr.next = Posting(p1.docID,1)
                 ptr = ptr.next
+                ptr.weight = p1.weight
                 p1 = p1.next
             else:
                 p2 = p2.next
-    # 生成相应临时Dictionary项
     temp1 = list1.next
     count = 0
     while temp1 != None:
@@ -250,59 +213,35 @@ def NOTAND(p1 ,p2):
 
 #或运算
 def OR(p1,p2):
-    p3 = p1
-    p4 = p2
-    while (p3.next != None):
-        if (p3.docID > p3.next.docID):
-            n_docid = p3.docID
-            n_tef=p3.term_freq
-            p3.docID = p3.next.docID
-            p3.term_freq=p3.next.term_freq
-            p3.next.docID = n_docid
-            p3.next.term_freq=n_tef
-            p3=p3.next
-        else:
-            p3=p3.next
-    while (p4.next != None):
-        if (p4.docID > p4.next.docID):
-            n_docid = p4.docID
-            n_tef = p4.term_freq
-            p4.docID = p4.next.docID
-            p4.term_freq = p4.next.term_freq
-            p4.next.docID = n_docid
-            p4.next.term_freq = n_tef
-            p4=p4.next
-        else:
-            p4=p4.next
     ans = Posting(0,0)
     ptr = ans
     while (p1 != None or p2 != None):
         if p1 == None and p2 != None:
             ptr.next = Posting(p2.docID,1)
-            # ptr.next.weight = p2.weight
             ptr = ptr.next
+            ptr.weight = p2.weight
             p2 = p2.next
         elif p2 == None and p1 != None:
             ptr.next = Posting(p1.docID,1)
-            # ptr.next.weight = p1.weight
             ptr = ptr.next
+            ptr.weight = p1.weight
             p1 = p1.next
         elif (p1.docID == p2.docID):
             ptr.next = Posting(p1.docID,1)
-            # ptr.next.weight = p1.weight + p2.weight
             ptr = ptr.next
+            ptr.weight = p1.weight + p2.weight
             p1 = p1.next
             p2 = p2.next
         else:
             if (p1.docID < p2.docID):
                 ptr.next = Posting(p1.docID,1)
-                # ptr.next.weight = p1.weight
                 ptr = ptr.next
+                ptr.weight = p1.weight
                 p1 = p1.next
             else:
                 ptr.next = Posting(p2.docID,1)
-                ptr.next.weight = p2.weight
                 ptr = ptr.next
+                ptr.weight = p2.weight
                 p2 = p2.next
     return ans.next
 
@@ -339,7 +278,7 @@ def OR_LIST(p_list):
 
 #显示
 def pri(b):
-    Doc_num = b.Doc_num
+    # Doc_num = b.Doc_num
     b = b.posting_list
     li = []
     while b!= None:
@@ -351,7 +290,38 @@ def pri(b):
         # print(b.docID)
         # b = b.next
 
+'''
+#查询语句
+#1
+print("\n"+'first:')
+listA=[dictionary['北'],dictionary['千'],dictionary['一']]
+listO=[dictionary['雪'],dictionary['云'],dictionary['风']]
+pri(AND(OR_LIST(listO),AND_LIST(listA)))
 
+#2
+print("\n"+'second:')
+listA=[dictionary['八月'],dictionary['珠帘'],dictionary['将军']]
+listO=[dictionary['雪'],dictionary['云'],dictionary['风']]
+pri(NOTAND(AND_LIST(listA),OR_LIST(listO)))
+
+#3
+print("\n"+'third:')
+listA=[dictionary['八月'],dictionary['珠帘'],dictionary['将军']]
+listO=[dictionary['江水'],dictionary['白云'],dictionary['晚']]
+pri(OR(AND_LIST(listA),OR_LIST(listO)))
+
+#4
+print("\n"+'forth:')
+listA=[dictionary['情'],dictionary['苦'],dictionary['军']]
+listO=[dictionary['冬'],dictionary['乡'],dictionary['不敢']]
+pri(NOTAND(AND_LIST(listA),OR_LIST(listO)))
+
+#5
+print("\n"+'fifth:')
+listA=[dictionary['先皇'],dictionary['故国'],dictionary['断']]
+listO=[dictionary['冬'],dictionary['乡'],dictionary['不敢']]
+pri(NOTAND(AND_LIST(listA),OR_LIST(listO)))
+'''
 
 def addLIST ():
     x = ""
@@ -408,116 +378,59 @@ while (True):
 
 '''
 
-# cxyj=input("请输入查询语句：")
-# listI=cxyj.split(" ")
-# list_terms = []
-# before = None
-# for i in listI:
+cxyj=input("请输入查询语句：")
+listI=cxyj.split(" ")
+list_terms = []
+list_title_terms = []
+before = None
+for i in listI:
 
-#     if i in switch.keys():
-#         if before == None:
-#             before = i
-#         elif before == 'NOTAND':
-#             ans = switch[before](list_terms[0].posting_list,list_terms[1].posting_list)
-#             list_terms.clear()
-#             list_terms.append(ans)
-#             before = i
-#         elif before != i:
-#             ans = switch[before+'_LIST'](list_terms)
-#             list_terms.clear()
-#             list_terms.append(ans)
-#             before = i
+    if i in switch.keys():
+        if before == None:
+            before = i
+        elif before == 'NOTAND':
+            ans = switch[before](list_terms[0].posting_list,list_terms[1].posting_list)
+            ans2 = switch[before](list_title_terms[0].posting_list,list_title_terms[1].posting_list)
+            l = [ans,ans2]
+            ans3 = OR_LIST(l)
+            list_terms.clear()
+            list_terms.append(ans3)
+            before = i
+        elif before != i:
+            ans = switch[before+'_LIST'](list_terms)
+            ans2 = switch[before+'_LIST'](list_title_terms)
+            l = [ans,ans2]
+            ans3 = OR_LIST(l)
+            list_terms.clear()
+            list_terms.append(ans3)
+            before = i
         
-#     elif i in dictionary.keys():
-#         list_terms.append(dictionary[i])
-#     else: 
-#         a = jieba.lcut(i)
-#         a = Dictionary(i,0,0)
-#         a.posting_list = None
-#         list_terms.append(a)
+    elif i in dictionary.keys():
+        list_terms.append(dictionary[i])
+        list_title_terms.append(dictionary_title[i])
+    else: 
+        a = jieba.lcut(i)
+        a = Dictionary(i,0,0)
+        a.posting_list = None
+        list_terms.append(a)
+        list_title_terms.appennd(a)
         
-# if before is None:
-#     ans = list_terms[0]
-# elif before == 'NOTAND':
-#     ans = switch[before](list_terms[0].posting_list,list_terms[1].posting_list)
-# else:
-#     ans = switch[before+'_LIST'](list_terms)
-# if ans.posting_list == None:
-#     print('None')
-# else:
-#     pri(ans)
-        
-class Applicantion(Frame):
-
-    def __init__(self, master=None):
-        super().__init__(master)
-        self.master = master
-        self.pack()
-        self.createWidget()
-
-    def createWidget(self):
-        
-        self.label01 = Label(self, text='查询语句输入')
-        self.label01.grid(row=0, column=0)
-        
-        self.lanel02=Label(self,text='标题输入')
-        self.lanel02.grid(row=1,column=0)
-
-        v1 = StringVar()  # 查询语句输入
-        self.entry01 = Entry(self, textvariable=v1)
-        self.entry01.grid(row=0, column=1,columnspan=2)
-
-        v2 = StringVar()  # 查询语句输入
-        self.entry02 = Entry(self, textvariable=v2)
-        self.entry02.grid(row=1, column=1, columnspan=2)
-
-        # 查询按钮
-        Button(self, text='查询', command=self.chaxun)\
-            .grid(row=2, column=1, padx=10, sticky=NSEW)
-
-    def chaxun(self):  # 登录事件
-        cxyj = self.entry01.get()
-        cxbt=self.entry02.get()
-
-if __name__ == '__main__':
-    root = Tk()
-    root.geometry('500x600+200+300')
-    root.title('唐诗三百首查询')
-    app = Applicantion(master=root)
-    root.mainloop()
-
-
-
-
-'''
-#查询语句
-#1
-print("\n"+'first:')
-listA=[dictionary['北'],dictionary['千'],dictionary['一']]
-listO=[dictionary['雪'],dictionary['云'],dictionary['风']]
-pri(AND(OR_LIST(listO),AND_LIST(listA)))
-
-#2
-print("\n"+'second:')
-listA=[dictionary['八月'],dictionary['珠帘'],dictionary['将军']]
-listO=[dictionary['雪'],dictionary['云'],dictionary['风']]
-pri(NOTAND(AND_LIST(listA),OR_LIST(listO)))
-
-#3
-print("\n"+'third:')
-listA=[dictionary['八月'],dictionary['珠帘'],dictionary['将军']]
-listO=[dictionary['江水'],dictionary['白云'],dictionary['晚']]
-pri(OR(AND_LIST(listA),OR_LIST(listO)))
-
-#4
-print("\n"+'forth:')
-listA=[dictionary['情'],dictionary['苦'],dictionary['军']]
-listO=[dictionary['冬'],dictionary['乡'],dictionary['不敢']]
-pri(NOTAND(AND_LIST(listA),OR_LIST(listO)))
-
-#5
-print("\n"+'fifth:')
-listA=[dictionary['先皇'],dictionary['故国'],dictionary['断']]
-listO=[dictionary['冬'],dictionary['乡'],dictionary['不敢']]
-pri(NOTAND(AND_LIST(listA),OR_LIST(listO)))
-'''
+if before is None:
+    ans = list_terms[0]
+    ans2 = list_title_terms[0]
+    l = [ans,ans2]
+    ans3 = OR_LIST(l)
+elif before == 'NOTAND':
+    ans = switch[before](list_terms[0].posting_list,list_terms[1].posting_list)
+    ans = switch[before](list_title_terms[0].posting_list,list_title_terms[1].posting_list)
+    l = [ans,ans2]
+    ans3 = OR_LIST(l)
+else:
+    ans = switch[before+'_LIST'](list_terms)
+    ans2 = switch[before+'_LIST'](list_title_terms)
+    l = [ans,ans2]
+    ans3 = OR_LIST(l)
+if ans3.posting_list == None:
+    print('None')
+else:
+    pri(ans3)
